@@ -50,38 +50,40 @@ class DatasetQueue:
                  sink_dataset_id: str,
                  source_dataset_id: str,
                  source_run_id: str,
+                 run_config: str,
+                 run_breadcrumb: str,
                  dataset_batch_run_id: str,
-                 dataset_partition_key: str,
-                 record_count: int,
+                 dataset_run_metadata: str,
+                 dataset_record_count: int,
                  source_ready_dt: datetime,
                  sink_zone: int,
                  sink_model_name: str,
-                 sink_model_key: str,
-                 sink_model_sec_key: str,
+                 sink_model_namespace: str,
+                 sink_model_dataset_props: str,
                  source_zone: int,
                  source_model_name: str,
-                 source_model_key: str,
-                 source_model_sec_key: str,
+                 source_model_namespace: str,
+                 source_model_dataset_props: str,
                  ):
         self.sink_dataset_id=sink_dataset_id
         self.source_dataset_id=source_dataset_id
         # These next ones are dynamic metadata about the source
         self.source_run_id=source_run_id
+        self.run_config=run_config
+        self.run_breadcrumb=run_breadcrumb
         self.dataset_batch_run_id=dataset_batch_run_id
-        self.dataset_partition_key=dataset_partition_key
-        self.record_count=record_count
+        self.dataset_run_metadata=dataset_run_metadata
+        self.dataset_record_count=dataset_record_count
         self.source_ready_dt=source_ready_dt
         # These next ones are static metadata about the source
         self.sink_zone=sink_zone
         self.sink_model_name=sink_model_name
-        self.sink_model_key=sink_model_key
-        self.sink_model_sec_key=sink_model_sec_key
+        self.sink_model_namespace=sink_model_namespace
+        self.sink_model_dataset_props=sink_model_dataset_props
         self.source_zone = source_zone
         self.source_model_name = source_model_name
-        self.source_model_key = source_model_key
-        self.source_model_sec_key = source_model_sec_key
-        self.source_run_id = source_run_id
-
+        self.source_model_namespace = source_model_namespace
+        self.source_model_dataset_props = source_model_dataset_props
 
 class DatasetStartResult:
     def __init__(self, run_id, pdl_dataset_queue_list: List[DatasetQueue], source_sink_rel_count: int,

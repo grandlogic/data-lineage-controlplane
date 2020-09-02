@@ -156,7 +156,7 @@ class TestDatasetLineage(unittest.TestCase):
         print("rel_id %s:" % rel_id)
         print("Associate 2 Dataset Observers source/sink")
 
-    def test_4_disassociate_dataset_source_from_sink(self):
+    def test_4_0_disassociate_dataset_source_from_sink(self):
         cls = TestDatasetLineage()
         dataset_observer = DatasetLineage(db_con=cls.db_con)
 
@@ -177,7 +177,7 @@ class TestDatasetLineage(unittest.TestCase):
         print(status)
         print("Disassociate 2 Dataset Observers source/sink")
 
-    def test_4_disassociate_then_reassociate_dataset_source_from_sink(self):
+    def test_4_1_disassociate_then_reassociate_dataset_source_from_sink(self):
         cls = TestDatasetLineage()
         dataset_observer = DatasetLineage(db_con=cls.db_con)
 
@@ -195,6 +195,46 @@ class TestDatasetLineage(unittest.TestCase):
         dataset_observer.disassociate_dataset_source_from_sink(dataset1, dataset2)
 
         dataset_observer.associate_dataset_source_to_sink(dataset1, dataset2)
+
+        print("Disassociate 2 Dataset Observers source/sink, then re-associate them again")
+
+    def test_5_0_start_dataset_observer_run_with_id(self):
+        cls = TestDatasetLineage()
+        #simple case
+
+        dataset_observer = DatasetLineage(db_con=cls.db_con)
+
+        dataset1 = dataset_observer.declare_dataset_observer(model_name="test5_0--test")
+
+        result = dataset_observer.start_dataset_observer_run_with_id(dataset1)
+
+    def test_5_1_finish_dataset_observer_run(self):
+        cls = TestDatasetLineage()
+        # simple case
+
+        dataset_observer = DatasetLineage(db_con=cls.db_con)
+
+        dataset1 = dataset_observer.declare_dataset_observer(model_name="test5_1--test")
+
+        result = dataset_observer.start_dataset_observer_run_with_id(dataset1)
+        dataset_observer.finish_dataset_observer_run(status="success", dataset_run_id=result.run_id)
+
+    def test_6_0_fetch_ready_dataset_sources_by_sink_id(self):
+        cls = TestDatasetLineage()
+        dataset_observer = DatasetLineage(db_con=cls.db_con)
+
+        dataset1 = dataset_observer.declare_dataset_observer(model_name="test6_0--test")
+
+        dataset2 = dataset_observer.declare_dataset_observer(model_name="another_test6_0--test",
+                                                             model_namespace="somespace",
+                                                             model_dataset_props="key stuff",
+                                                             model_zone_tag=3,
+                                                             description="cool model",
+                                                             observer_config="some config")
+
+        dataset_observer.associate_dataset_source_to_sink(dataset1, dataset2)
+
+
 
         print("Disassociate 2 Dataset Observers source/sink, then re-associate them again")
 

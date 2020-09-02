@@ -32,8 +32,11 @@ CREATE UNIQUE INDEX dataset_observer_indx ON dataset_observer(dataset_observer_i
 
 /*
    Immutable relationship between source and sink. Can only have one "active" record per
-   sink/source. Active record is defined by the terminated_dt being not infinity and suspended not null.
+   sink/source. Active rel is defined by the terminated_dt being not infinity and suspended not null.
    Rels can be terminated and new rels created over time without loss of history of rels.
+
+   Rel must be suspended and have no active events in the queue, before it can be terminated/ended.
+
 */
 CREATE TABLE dataset_source_to_sink_meta_rel (
     sink_dataset_id CHAR(32) NOT NULL,
@@ -58,7 +61,7 @@ CREATE TABLE dataset_source_sink_event_queue (
     source_run_id CHAR(32) NOT NULL,
     sink_run_id CHAR(32) NOT NULL DEFAULT 'zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz',  -- this gets updated when sink observer starts running
 
-    rerun_last_sink_run_id CHAR(32), -- UUID **new** before retry/rerun make sure dataset_rel_id still exists in rel table
+    rerun_last_sink_run_id CHAR(32), -- UUID **new** before retry/replay make sure dataset_rel_id still exists in rel table
 
     rerun_status INT, -- null original not rerun, 1 replay from success, 2 retry from error, 3 retry from cleared-orphan  -- **new**
 
