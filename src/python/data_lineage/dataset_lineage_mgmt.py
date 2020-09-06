@@ -85,21 +85,21 @@ class DatasetLineage:
         """
         Clear an orphaned dataset run.
 
-        ToDo: clear_dataset_run() Might need another api call also to clear any/all for an overall dataset_process
+        ToDo: clear_dataset_run() Might need another api call also to clear any/all for an overall dataset_observer
               and not just a for a specific run?? This should also clear the queue table so sources are shown
               as not consumed yet.
         :return:
         """
         pass
 
-    def update_dataset_observer(self, dataset_id:str, description:str=None,
+    def update_dataset_observer(self, dataset_observer_id:str, description:str=None,
                                 observer_config:str=None,
                                 display_name:str=None) ->int:
 
         """
 
-        :param dataset_id:
-        :type dataset_id:
+        :param dataset_observer_id:
+        :type dataset_observer_id:
         :param description:
         :type description:
         :param observer_status:
@@ -112,7 +112,7 @@ class DatasetLineage:
         """
         conn = None
         try:
-            dataset_process_id = get_new_guid()
+            # dataset_process_id = get_new_guid()
             conn = self.__get_db_con()
             cursor = conn.cursor()
 
@@ -142,7 +142,7 @@ class DatasetLineage:
             logger.debug("SQL stmt: %s" % stmt_update_sql)
             input_vals = (col_val_list)
             input_vals.append(datetime.now())
-            input_vals.append(dataset_id)
+            input_vals.append(dataset_observer_id)
             cursor.execute(stmt_update_sql, input_vals)
             rows_updated = cursor.rowcount
             # conn.commit()
@@ -155,12 +155,12 @@ class DatasetLineage:
             if conn is not None:
                 self.__close_db_con(conn)
 
-    def update_dataset_observer_status(self, dataset_id:str,
+    def update_dataset_observer_status(self, dataset_observer_id:str,
                                        observer_status:int=None) ->int:
 
         """
 
-        :param dataset_id:
+        :param dataset_observer_id:
         :type observer_status: possible values: 0 disabled, 1 enabled, 2 retired.
         disabled means can't run (even if sources ready), retired can't be used as new source
         for a sink dataset/observer when making associations.
@@ -169,7 +169,7 @@ class DatasetLineage:
         """
         conn = None
         try:
-            dataset_process_id = get_new_guid()
+            #dataset_process_id = get_new_guid()
             conn = self.__get_db_con()
 
             # if trying to retire and dataset_id has source/sink rels then throw validation exception
@@ -214,7 +214,7 @@ class DatasetLineage:
             logger.debug("SQL stmt: %s" % stmt_update_sql)
             input_vals = (col_val_list)
             input_vals.append(datetime.now())
-            input_vals.append(dataset_id)
+            input_vals.append(dataset_observer_id)
             cursor.execute(stmt_update_sql, input_vals)
             rows_updated = cursor.rowcount
             # conn.commit()
@@ -239,8 +239,8 @@ class DatasetLineage:
     def declare_dataset_observer(self,
                                  model_name:str,
                                  model_namespace:str = 'ROOT',
-                                 model_zone_tag: int = 0,
                                  model_dataset_props: str = 'NA',
+                                 model_zone_tag: int = 1,
                                  observer_config:str=None,
                                  display_name:str=None,
                                  description:str=None) -> str:
@@ -256,8 +256,8 @@ class DatasetLineage:
         :param model_name: Model name for data model managed by this dataset process. Usually humanly understandable
         name.
         :param model_namespace: Optional namespace for model. If you want to group the model names into namespaces.
-        :param model_partition_keys: Partition keys. Can be JSON or other name=value type of string structure.
-        :param zone_tag: You can define your own data lake zones starting with 0 and go up. Defaults to 0.
+        :param model_dataset_props: Partition keys. Can be JSON or other name=value type of string structure.
+        :param model_zone_tag: You can define your own data lake zones starting with 0 and go up. Defaults to 0.
         :param description: Give some description if you like.
         :param config_data: Static configuration information the observer can pass to the ETL process.
         :return: guid hex string for newly tracked dataset process
@@ -274,10 +274,10 @@ class DatasetLineage:
 
             # ToDo: See if it exists already, if it does, then enable it (if disabled) and return the same existing one.
 
-            stmt_insert = "INSERT INTO dataset_observer (model_name, model_namespace, model_zone_tag, model_dataset_props, " \
+            stmt_insert = "INSERT INTO dataset_observer (model_name, model_namespace, model_dataset_props, model_zone_tag, " \
                           "dataset_observer_id, description, observer_config, display_name) " \
                           "VALUES ( %s, %s, %s, %s, %s, %s, %s, %s)"
-            input_vals = (model_name, model_namespace,model_zone_tag, model_dataset_props,
+            input_vals = (model_name, model_namespace, model_dataset_props, model_zone_tag,
                           dataset_observer_id.hex, description, observer_config, display_name)
             cursor.execute(stmt_insert, input_vals)
             cursor.close()
@@ -291,7 +291,7 @@ class DatasetLineage:
                 self.__close_db_con(conn)
 
     def start_dataset_observer_run_with_id(self,
-                                           dataset_process_id: str,
+                                           dataset_observer_id: str,
                                            dependency_check="any",
                                            specific_sources: List[str] = None,
                                            breadcrumb: str = None,
@@ -304,7 +304,7 @@ class DatasetLineage:
 
         Only one process can be actively running per dataset at any one time.
 
-        :param dataset_process_id: (Required) dataset process ID
+        :param dataset_observer_id: (Required) dataset process ID
         :param dependency_check: {'all', 'any', 'ignore', 'source_ids', 'source_run_ids'} or List of source dataset IDs.
                                  Run dataset only when source dataset dependency is met. Note that if sink has no
                                  source dependencies/associations the dataset is always run.
@@ -326,8 +326,8 @@ class DatasetLineage:
         :param ext_job_run_output_log_link:
         :param ext_etl_proc_key:
         :param ext_etl_proc_output_log_link:
-        :raise: datasetAlreadyActiveException if dataset_process_id is already active.
-        :raise: datasetNotFoundException if dataset_process_id not found.
+        :raise: datasetAlreadyActiveException if dataset_observer_id is already active.
+        :raise: datasetNotFoundException if dataset_observer_id not found.
         :raise: datasetDependencyException if dependencies missing or not satisfied.
         :return: PdldatasetStartResult containing run_id and any available list of sources run metadata
         (PdldatasetQueue).
@@ -337,10 +337,10 @@ class DatasetLineage:
         try:
             conn = self.__get_db_con()
 
-            if self.__does_dataset_observer_id_exist(conn, dataset_process_id) == False:
-                raise DatasetNotFoundException('Invalid dataset process id. The value was: {}'.format(dataset_process_id))
+            if self.__does_dataset_observer_id_exist(conn, dataset_observer_id) == False:
+                raise DatasetNotFoundException('Invalid dataset process id. The value was: {}'.format(dataset_observer_id))
 
-            return self.__internal_start_dataset_run(conn, dataset_process_id,
+            return self.__internal_start_dataset_run(conn, dataset_observer_id,
                                                      dependency_check=dependency_check,
                                                      specific_sources=specific_sources,
                                                      breadcrumb=breadcrumb,
@@ -352,7 +352,11 @@ class DatasetLineage:
             if conn is not None:
                 self.__close_db_con(conn)
 
-    def start_dataset_observer_run_with_keys(self, zone:str, model_name:str, model_key:str, model_sec_key:str=None,
+    def start_dataset_observer_run_with_keys(self,
+                                             model_name: str,
+                                             model_namespace: str = 'ROOT',
+                                             model_dataset_props: str = 'NA',
+                                             model_zone_tag: int = 1,
                                              dependency_check='any',
                                              specific_sources: List[str] = None,
                                              breadcrumb: str = None,
@@ -365,10 +369,10 @@ class DatasetLineage:
 
         Only one process can be actively running per dataset at any one time.
 
-        :param zone: {'rz', 'sz', 'cz', 'xz'}
-        :param model_name: e.g. for sz: "billing" for cz: "consolidated_billing"
-        :param model_key: e.g. "health_net=Piedmont"
-        :param model_sec_key: e.g. "prov_code=SGHSHF"
+        :param model_zone_tag: {'rz', 'sz', 'cz', 'xz'}
+        :param model_name: e.g.
+        :param model_namespace:
+        :param model_dataset_props: e.g.
         :param dependency_check: {'all', 'any', 'ignore', 'source_ids', 'source_run_ids'} or List of source dataset IDs.
                                  Run dataset only when source dataset dependency is met. Note that if sink has no
                                  source dependencies/associations the dataset is always run.
@@ -389,8 +393,8 @@ class DatasetLineage:
         :param ext_job_run_output_log_link:
         :param ext_etl_proc_key:
         :param ext_etl_proc_output_log_link:
-        :raise: datasetAlreadyActiveException if dataset_process_id is already active.
-        :raise: datasetNotFoundException if dataset_process_id not found.
+        :raise: datasetAlreadyActiveException if dataset_observer_id is already active.
+        :raise: datasetNotFoundException if dataset_observer_id not found.
         :raise: datasetDependencyException if dependencies missing or not satisfied.
         :return: PdldatasetStartResult containing run_id and any available list of sources run metadata
         (PdldatasetQueue).
@@ -401,15 +405,19 @@ class DatasetLineage:
         try:
             conn = self.__get_db_con()
 
-            if model_sec_key is None:
-                model_sec_key = model_key
+            if model_dataset_props is None:
+                model_dataset_props = model_namespace
 
-            dataset_process_id = self.__lookup_dataset_id(conn, zone, model_name, model_key, model_sec_key)
+            dataset_observer_id = self.__lookup_dataset_id(conn,
+                                                           model_name,
+                                                           model_namespace,
+                                                           model_dataset_props,
+                                                           model_zone_tag)
 
-            if dataset_process_id is None:
+            if dataset_observer_id is None:
                 raise DatasetNotFoundException("dataset process does not exist, so sorry can't run")
 
-            return self.__internal_start_dataset_run(conn, dataset_process_id,
+            return self.__internal_start_dataset_run(conn, dataset_observer_id,
                                                      dependency_check=dependency_check,
                                                      specific_sources=specific_sources,
                                                      breadcrumb=breadcrumb,
@@ -470,13 +478,13 @@ class DatasetLineage:
 
             conn = self.__get_db_con()
 
-            pdl_dataset_run = self.__lookup_dataset_run_id(conn, dataset_run_id)
+            dlc_dataset_run = self.__lookup_dataset_run_id(conn, dataset_run_id)
 
-            if pdl_dataset_run is None:
+            if dlc_dataset_run is None:
                 raise DatasetNotFoundException('dataset run ID not found'.format(dataset_run_id))
 
-            if pdl_dataset_run.status in [0, 3, 4]:
-                raise RunAlreadyFinishedException('dataset run ID not active/running. Current status: '.format(pdl_dataset_run.status))
+            if dlc_dataset_run.status in [0, 3, 4]:
+                raise RunAlreadyFinishedException('dataset run ID not active/running. Current status: '.format(dlc_dataset_run.status))
 
             current_dt = datetime.now()
 
@@ -570,15 +578,20 @@ class DatasetLineage:
                 # Insert/Select to find sink dataset id and all dataset sources
                 # May create multiple queue records
 
-                stmt_insert_q = "INSERT INTO dataset_source_sink_event_queue (sink_dataset_id, source_dataset_id," \
-                                "source_run_id, source_ready_dt) SELECT " \
-                                "sink_dataset_id, source_dataset_id, %s, %s " \
-                                "FROM dataset_source_to_sink_meta_rel WHERE source_dataset_id = %s"
+                stmt_insert_q = """INSERT INTO 
+                                       dataset_source_sink_event_queue (
+                                       dataset_rel_id, -- sink_dataset_id, source_dataset_id,
+                                       source_run_id, source_ready_dt)
+                                   SELECT
+                                       dataset_rel_id, %s, %s
+                                       FROM dataset_source_to_sink_meta_rel rel
+                                          -- JOIN dataset_observer source ON (source.dataset_observer_id = )
+                                       WHERE source_dataset_id = %s AND terminated_dt = %s"""
 
                 insert_q_cursor = conn.cursor()
 
                 #print("stmt insert/select into q {}".format(stmt_insert_q))
-                input_vals = (dataset_run_id, current_dt, pdl_dataset_run.dataset_id)
+                input_vals = (dataset_run_id, current_dt, dlc_dataset_run.dataset_id, self.dbmgr.get_max_datetime_to_sec())
                 insert_q_cursor.execute(stmt_insert_q, input_vals)
                 insert_q_cursor.close()
 
@@ -598,10 +611,10 @@ class DatasetLineage:
         """
         pass
 
-    def get_dataset_observer(self, dataset_process_id: str) -> DatasetProperties:
+    def get_dataset_observer(self, dataset_observer_id: str) -> DatasetProperties:
         """
         Find a matching dataset.
-        :param dataset_process_id:
+        :param dataset_observer_id:
         :return: None if no match
         """
         conn = None
@@ -610,10 +623,10 @@ class DatasetLineage:
             conn = self.__get_db_con()
             cursor = conn.cursor()
 
-            stmt_query = "SELECT dataset_process_id, zone, model_name, model_namespace, " \
-                         "model_partition_keys, status, description, created_dt, status_update_dt " \
-                         "FROM dataset_process WHERE dataset_process_id = %s "
-            input_vals = (dataset_process_id,)
+            stmt_query = "SELECT dataset_process_id, model_zone_tag, model_name, model_namespace, " \
+                         "model_dataset_props, status, description, created_dt, status_update_dt " \
+                         "FROM dataset_observer WHERE dataset_observer_id = %s "
+            input_vals = (dataset_observer_id,)
             cursor.execute(stmt_query, input_vals)
 
             resultset = cursor.fetchall()
@@ -638,7 +651,12 @@ class DatasetLineage:
             if conn is not None:
                 self.__close_db_con(conn)
 
-    def get_dataset_observer_id(self, zone:int, model_name:str, model_namespace:str, model_partition_keys:str) -> str:
+    def get_dataset_observer_id(self,
+                                model_name: str,
+                                model_namespace: str = 'ROOT',
+                                model_dataset_props: str = 'NA',
+                                model_zone_tag: int = 1,
+                                ) -> str:
         """
         Find unique GUID for dataset.
 
@@ -654,7 +672,11 @@ class DatasetLineage:
         try:
             conn = self.__get_db_con()
 
-            return self.__lookup_dataset_id(conn, zone, model_name, model_namespace, model_partition_keys)
+            return self.__lookup_dataset_id(conn,
+                                            model_name,
+                                            model_namespace,
+                                            model_dataset_props,
+                                            model_zone_tag)
         finally:
             if conn is not None:
                 self.__close_db_con(conn)
@@ -819,26 +841,30 @@ class DatasetLineage:
 
         try:
             conn = self.__get_db_con()
-            pdl_dataset_queue_list, source_id_list, source_sink_rel_count, sink_id_list, source_run_id_list, \
-            orphan_sink, sink_observer_config =\
+            queue_list, unique_source_id_list, static_source_rel_count, sink_id, source_run_id_list, \
+            orphan_sink, dataset_rel_id_list, sink_observer_config =\
                 self.__internal_sources_ready_in_queue(conn, sink_dataset_id, dependency_check=dependency_check)
 
-            fetch_result_summary = DatasetFetchSummary(pdl_dataset_queue_list, source_sink_rel_count, source_id_list,
-                                                       sink_id_list, source_run_id_list, orphan_sink)
+            fetch_result_summary = DatasetFetchSummary(queue_list, static_source_rel_count, unique_source_id_list,
+                                                       sink_id, source_run_id_list, orphan_sink)
+
+            print("queue_list: %s \n unique_source_id_list: %s \n static_source_rel_count: %d \n "
+                  "unique_sink_id_list: %s \n orphan sink: %s" %
+                  (len(queue_list), unique_source_id_list, static_source_rel_count, sink_id, orphan_sink))
 
             # return both here for backward compatibility - summary is superset
-            return pdl_dataset_queue_list, fetch_result_summary
+            return queue_list, fetch_result_summary
         finally:
             if conn is not None:
                 self.__close_db_con(conn)
 
     def fetch_ready_dataset_sources_by_sink_keys(self,
-                                                   zone: str = None,
-                                                   model_name: str = None,
-                                                   model_key: str = None,
-                                                   model_sec_key: str = None,
-                                                   dependency_check: str = 'any'
-                                                   ) -> (List[DatasetQueue], DatasetFetchSummary):
+                                                 model_name: str,
+                                                 model_namespace: str = 'ROOT',
+                                                 model_dataset_props: str = 'NA',
+                                                 model_zone_tag: int = 1,
+                                                 dependency_check: str = 'any'
+                                                 ) -> (List[DatasetQueue], DatasetFetchSummary):
         """
         Detect if any sources are ready for consumption for a sink.
 
@@ -856,19 +882,20 @@ class DatasetLineage:
         try:
             conn = self.__get_db_con()
 
-            pdl_dataset_queue_list, source_id_list, source_sink_rel_count, sink_id_list, source_run_id_list, \
+            dataset_queue_list, source_id_list, source_sink_rel_count, sink_id_list, source_run_id_list, \
             orphan_sink, sink_observer_config =\
-                self.__internal_sources_ready_in_queue(conn, zone=zone,
+                self.__internal_sources_ready_in_queue(conn,
                                                        model_name=model_name,
-                                                       model_key=model_key,
-                                                       model_sec_key=model_sec_key,
+                                                       model_namespace=model_namespace,
+                                                       model_zone_tag=model_zone_tag,
+                                                       model_dataset_props=model_dataset_props,
                                                        dependency_check=dependency_check)
 
-            fetch_result_summary = DatasetFetchSummary(pdl_dataset_queue_list, source_sink_rel_count,
+            fetch_result_summary = DatasetFetchSummary(dataset_queue_list, source_sink_rel_count,
                                                        source_id_list, sink_id_list, source_run_id_list, orphan_sink)
 
             # return both here for backward compatibility - summary is superset
-            return pdl_dataset_queue_list, fetch_result_summary
+            return dataset_queue_list, fetch_result_summary
         finally:
             if conn is not None:
                 self.__close_db_con(conn)
@@ -920,9 +947,12 @@ class DatasetLineage:
         else: # do not close internally managed con
             return
 
-    def __lookup_dataset_id(self, conn, model_name:str,
-                            model_namespace:str='ROOT', model_partition_keys:str='NA',
-                            zone_tag:int = 1) -> str:
+    def __lookup_dataset_id(self, conn,
+                            model_name:str,
+                            model_namespace:str='ROOT',
+                            model_dataset_props:str='NA',
+                            model_zone_tag:int = 1
+                            ) -> str:
         """
                 Find and return the dataset GUID , if one exists.
 
@@ -936,8 +966,8 @@ class DatasetLineage:
         cursor = conn.cursor()
 
         stmt_query = "SELECT dataset_observer_id FROM dataset_observer WHERE zone = %s " \
-                     " AND model_name = %s AND model_namespace = %s AND model_partition_keys = %s AND zone_tag = %i"
-        input_vals = (model_name, model_namespace, model_partition_keys, zone_tag)
+                     " AND model_name = %s AND model_namespace = %s AND model_dataset_props = %s AND model_zone_tag = %i"
+        input_vals = (model_name, model_namespace, model_dataset_props, model_zone_tag)
         cursor.execute(stmt_query, input_vals)
 
         row = cursor.fetchall()
@@ -968,9 +998,9 @@ class DatasetLineage:
         #    cursor.close()
         #    return None
 
-        pdl_run_model = None
+        run_model = None
         for row in result_set:
-            pdl_run_model = DatasetRun(
+            run_model = DatasetRun(
                 dataset_id=row[0],
                 dataset_run_id = row[1],
                 status = row[2],
@@ -979,23 +1009,23 @@ class DatasetLineage:
 
         cursor.close()
 
-        return pdl_run_model
+        return run_model
 
-    def __does_dataset_observer_id_exist(self, conn, dataset_process_id:str) -> bool:
+    def __does_dataset_observer_id_exist(self, conn, dataset_observer_id:str) -> bool:
         """
         Check if dataset process id exists.
 
         :param conn:
-        :param dataset_process_id:
+        :param dataset_observer_id:
         :return: False or True if process id exists
         """
         cursor = conn.cursor()
 
         #print("dataset_id {}".format(dataset_process_id))
-        #print(get_pdl_raw_hex_to_byte(dataset_process_id))
+        #print(get_dlc_raw_hex_to_byte(dataset_process_id))
 
         stmt_query = 'SELECT dataset_observer_id FROM dataset_observer WHERE dataset_observer_id = %s'
-        input_vals = (dataset_process_id,)
+        input_vals = (dataset_observer_id,)
         cursor.execute(stmt_query, input_vals)
 
         row = cursor.fetchall()
@@ -1010,21 +1040,21 @@ class DatasetLineage:
             return True
 
     def __internal_sources_ready_in_queue(self, conn:dbapi_connector.connection,
-                                          dataset_id: str = None,
-                                          zone: str = None,
-                                          model_name: str = None,
-                                          model_key: str = None,
-                                          model_sec_key: str = None,
+                                          dataset_observer_id: str=None,
+                                          model_name: str=None,
+                                          model_namespace: str = 'ROOT',
+                                          model_zone_tag: int = 0,
+                                          model_dataset_props: str = 'NA',
                                           dependency_check='any',
                                           specific_sources: List[str] = None
-                                          ) -> (List[DatasetQueue], Set[str], int, Set[str],
+                                          ) -> (List[DatasetQueue], Set[str], int, str,
                                                 List[str], bool, Set[str], str):
         """
         Lookup all associated sources_dataset_run_ids runs and return rowcounts/dataset_batch_id
         and model keys for each source run IDs
 
         :param conn:
-        :param dataset_id: If present keys zone--->model_sec_key are ignored
+        :param dataset_observer_id: If present keys zone--->model_sec_key are ignored
         :param zone: Zone may be provided alone or with additional predicates below.
         :param model_name Optional. Zone is required.
         :param model_key Optional. model_name is required.
@@ -1055,22 +1085,21 @@ class DatasetLineage:
         col_val_list = []
 
         # either use dataset_id or the dataset process keys used to define/create a dataset
-        if dataset_id is not None:
+        if dataset_observer_id is not None:
             col_name_list.append('z.dataset_observer_id')
-            col_val_list.append(dataset_id)
-        elif zone is not None:
+            col_val_list.append(dataset_observer_id)
+        elif model_zone_tag is not None and \
+             model_name is not None and \
+             model_namespace is not None and \
+             model_dataset_props is not None:
             col_name_list.append('z.model_zone_tag')
-            col_val_list.append(zone)
-
-            if model_name is not None:
-                col_name_list.append('z.model_name')
-                col_val_list.append(model_name)
-                if model_key is not None:
-                    col_name_list.append('z.model_key')
-                    col_val_list.append(model_key)
-                    if model_sec_key is not None:
-                        col_name_list.append('z.model_sec_key')
-                        col_val_list.append(model_sec_key)
+            col_val_list.append(model_zone_tag)
+            col_name_list.append('z.model_name')
+            col_val_list.append(model_name)
+            col_name_list.append('z.model_namespace')
+            col_val_list.append(model_namespace)
+            col_name_list.append('z.model_dataset_props')
+            col_val_list.append(model_dataset_props)
         else:
             raise DatasetBaseException("dataset_id or keys are missing for lookup up dataset sources")
 
@@ -1078,37 +1107,51 @@ class DatasetLineage:
         count_cursor = conn.cursor()
         count_query = """
                      SELECT 
-                          count(rel.source_dataset_id) num_sources, avg(rel.sink_dataset_id) the_sink_proc_id 
+                          count(rel.source_dataset_id) num_sources, max(z.dataset_observer_id) the_sink_proc_id 
                      FROM dataset_observer z 
-                     LEFT JOIN dataset_source_to_sink_meta_rel as rel
-                       ON (z.dataset_observer_id = rel.sink_dataset_id) 
-                     WHERE rel.terminated_dt = %s AND
+                         LEFT JOIN dataset_source_to_sink_meta_rel as rel
+                             ON (z.dataset_observer_id = rel.sink_dataset_id AND rel.terminated_dt = %s) 
+                     WHERE
                      """
 
         for index, col_name in enumerate(col_name_list):
             if index > 0:
                 count_query += " AND "
             count_query += col_name + "=%s"
-
+        # count_query += " GROUP BY z.dataset_observer_id"
+        #print(count_query)
         input_vals = (self.dbmgr.get_max_datetime_to_sec(), *col_val_list)
+        #print(input_vals)
         count_cursor.execute(count_query, input_vals)
 
         # a nice hack to get the sink_proc_id even if it is not explicitly passed in this function.
         the_sink_proc_id = None
 
-        rows = count_cursor.fetchall()
+        row = count_cursor.fetchone()
         static_source_rel_count=0
         # dont' really need a for loop here, since only on row max can be returned
-        for row in rows:
+        #for row in rows:
+        if row is not None:
             static_source_rel_count = row[0]
             the_sink_proc_id = row[1]
+        else:
+            count_cursor.close()
+            raise DatasetBaseException("dataset_id or keys were not found")
+
         count_cursor.close()
+
+        # should never happen. defensive code
+        if dataset_observer_id is not None and the_sink_proc_id != dataset_observer_id:
+            raise DatasetBaseException("The provided dataset_id does match records in query. dataset_observer_id: %s, "
+                                       "the_sink_proc_id: %s", dataset_observer_id, the_sink_proc_id)
 
         # if static_source_rel_count let next sql run, just in case to handle cases something in went wrong with rel
         # static vs rel runtime.
 
         # find all the sources ready for processing by sink
-        sources_rel_cursor = conn.cursor()
+        sources_rel_cursor = None
+        if static_source_rel_count > 0:
+            sources_rel_cursor = conn.cursor()
         stmt_query = """
                      SELECT 
                          mrel.sink_dataset_id, mrel.source_dataset_id, qu.source_run_id,
@@ -1123,11 +1166,11 @@ class DatasetLineage:
                           ON (mrel.dataset_rel_id = qu.dataset_rel_id)
                      JOIN dataset_observer_run as run 
                           ON (qu.source_run_id = run.run_id) 
-                     JOIN dataset_observer as z 
+                     JOIN dataset_observer as z -- sink
                           ON (z.dataset_observer_id = mrel.sink_dataset_id) 
                      JOIN dataset_observer as source 
                           ON (source.dataset_observer_id = mrel.source_dataset_id) 
-                     WHERE qu.sink_run_id != 'zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz' AND run.status = 3  
+                     WHERE qu.sink_run_id = 'zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz' AND run.status = 3  
                      """
         #for col_name in col_name_list:
         #    stmt_query += " AND " + col_name + "=%s"
@@ -1157,12 +1200,15 @@ class DatasetLineage:
         input_vals = (the_sink_proc_id, *specific_source_id_list)
         # print("input vals")
         # print(input_vals)
-        sources_rel_cursor.execute(stmt_query, input_vals)
 
-        rows = sources_rel_cursor.fetchall()
+        rows = []
+        if sources_rel_cursor is not None:
+            sources_rel_cursor.execute(stmt_query, input_vals)
+            rows = sources_rel_cursor.fetchall()
+
         queue_list = []
         result_source_id_list = []
-        sink_id_list = []
+        #sink_id_list = []
         dataset_run_id_list = []
         dataset_rel_id_list = []
         sink_observer_config=""
@@ -1191,13 +1237,14 @@ class DatasetLineage:
             )
 
             result_source_id_list.append(queue.source_dataset_id)
-            sink_id_list.append(queue.sink_dataset_id)
+            #sink_id_list.append(queue.sink_dataset_id)
             dataset_run_id_list.append(queue.source_run_id)
             queue_list.append(queue)
             dataset_rel_id_list.append(row[18])
             sink_observer_config = row[19]
 
-        sources_rel_cursor.close()
+        if sources_rel_cursor is not None:
+            sources_rel_cursor.close()
 
         # Check and report if sink has orphans
         orphan_query = "SELECT run_id, status FROM dataset_observer_run" \
@@ -1215,14 +1262,14 @@ class DatasetLineage:
 
         if static_source_rel_count != len(set(result_source_id_list)) and dependency_check == 'all':
             # return empty list
-            return [], set(result_source_id_list), static_source_rel_count, set(sink_id_list), dataset_run_id_list, \
+            return [], set(result_source_id_list), static_source_rel_count, the_sink_proc_id, dataset_run_id_list, \
                    orphan_sink, set(dataset_rel_id_list), sink_observer_config
 
         # source queue/runs found, unique sources ids found in queue, static sink/source rel count
-        return queue_list, set(result_source_id_list), static_source_rel_count, set(sink_id_list), \
+        return queue_list, set(result_source_id_list), static_source_rel_count, the_sink_proc_id, \
             dataset_run_id_list, orphan_sink, set(dataset_rel_id_list), sink_observer_config
 
-    def __internal_start_dataset_run(self, conn, dataset_process_id:str,
+    def __internal_start_dataset_run(self, conn, dataset_observer_id:str,
                                      dependency_check='any',
                                      specific_sources: List[str] = None,
                                      breadcrumb: str = None,
@@ -1233,7 +1280,7 @@ class DatasetLineage:
         """
 
         :param conn:
-        :param dataset_process_id:
+        :param dataset_observer_id:
         :param dependency_check: {'all', 'any', 'ignore', 'source_ids', 'source_run_ids'} or List of source dataset IDs.
                                  Run dataset only when source dataset dependency is met. If sink has no
                                  source dependencies/associations the dataset is always run.
@@ -1254,13 +1301,13 @@ class DatasetLineage:
         :param ext_job_run_output_log_link:
         :param ext_etl_proc_key:
         :param ext_etl_proc_output_log_link:
-        :raise: datasetAlreadyActiveException if dataset_process_id already has an active or orphaned run process.
+        :raise: datasetAlreadyActiveException if dataset_observer_id already has an active or orphaned run process.
         :return: PdldatasetStartResult containing run_id and any available list of sources run metadata (PdldatasetQueue).
         """
 
         if (dependency_check == 'source_ids' or dependency_check == 'source_run_ids') and\
                 (specific_sources is None or len(specific_sources) == 0):
-            raise ConfigValidationException("Error: You did provide any specific_sources "
+            raise ConfigValidationException("Error: You did not provide any specific_sources "
                                                     "specific_sources: %s" % (specific_sources))
 
         run_id = get_new_guid().hex
@@ -1286,17 +1333,17 @@ class DatasetLineage:
             #       -Some defensive code to prevent duplicates running for dataset ID
 
             # Dont worry, dependency_check ignore get handled like 'any' during this call
-            queue_list, unique_source_id_list, static_source_rel_count, unique_sink_id_list, source_run_id_list, \
+            queue_list, unique_source_id_list, static_source_rel_count, sink_id, source_run_id_list, \
             orphan_sink, dataset_rel_id_list, sink_observer_config = \
-                self.__internal_sources_ready_in_queue(conn, dataset_process_id, dependency_check=dependency_check,
+                self.__internal_sources_ready_in_queue(conn, dataset_observer_id, dependency_check=dependency_check,
                                                        specific_sources=specific_sources)
 
             print("queue_list: %s \n unique_source_id_list: %s \n static_source_rel_count: %d \n "
                   "unique_sink_id_list: %s \n orphan sink: %s" %
-                  (len(queue_list), unique_source_id_list, static_source_rel_count, unique_sink_id_list, orphan_sink))
+                  (len(queue_list), unique_source_id_list, static_source_rel_count, sink_id, orphan_sink))
 
-            dataset_start_result = DatasetStartResult(run_id, queue_list, static_source_rel_count,
-                                                          unique_source_id_list, unique_sink_id_list,
+            dataset_start_result = DatasetStartResult(run_id, sink_id, queue_list, static_source_rel_count,
+                                                          unique_source_id_list,
                                                           source_run_id_list, orphan_sink)
 
             if (dependency_check == 'source_ids' or dependency_check == 'source_run_ids') and \
@@ -1331,7 +1378,7 @@ class DatasetLineage:
             if source_run_id_list is not None and len(source_run_id_list) > 0:
                 run_list_params = ', '.join('s' * len(source_run_id_list)).replace('s', '%s')
 
-            where_list = [run_id, start_dt, dataset_process_id]
+            where_list = [run_id, start_dt, dataset_observer_id]
             stmt_update = """UPDATE dataset_source_sink_event_queue q
                                JOIN dataset_source_to_sink_meta_rel rel ON (q.dataset_rel_id = rel.dataset_rel_id)
                              SET q.sink_run_id=%s, q.sink_start_dt=%s WHERE """
@@ -1382,7 +1429,7 @@ class DatasetLineage:
 
             col_name_list.append('dataset_observer_id')
             col_type_list.append("%s")
-            col_val_list.append(dataset_process_id)
+            col_val_list.append(dataset_observer_id)
 
             col_name_list.append('start_dt')
             col_type_list.append("%s")
@@ -1434,7 +1481,7 @@ class DatasetLineage:
 
             stmt_query = "SELECT run_id, status FROM dataset_observer_run" \
                          " WHERE dataset_observer_id = %s AND (status = 1 OR status = 2)"
-            input_vals = (dataset_process_id,)
+            input_vals = (dataset_observer_id,)
             query_cursor.execute(stmt_query, input_vals)
 
             rows = query_cursor.fetchall()
@@ -1454,7 +1501,7 @@ class DatasetLineage:
     def test_dbcon(self):
         conn = self.__get_db_con()
         cursor = conn.cursor()
-        query = "SELECT run_id FROM zone_dataset_process_run"
+        query = "SELECT dataset_observer_id FROM dataset_observer limit 1"
         cursor.execute(query)
         cursor.fetchall()
         cursor.close()
@@ -1462,9 +1509,9 @@ class DatasetLineage:
 
 
 if __name__ == '__main__':
-    db_host: str = os.environ['PDL_DB_HOST']
-    db_user:str = os.environ['PDL_DB_USER']
-    db_password: str = os.environ['PDL_DB_PASS']
+    db_host: str = os.environ['DLC_DB_HOST']
+    db_user:str = os.environ['DLC_DB_USER']
+    db_password: str = os.environ['DLC_DB_PASS']
     db_name='pdl'
 
     print(uuid.uuid4())

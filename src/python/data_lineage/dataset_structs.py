@@ -86,44 +86,44 @@ class DatasetQueue:
         self.source_model_dataset_props = source_model_dataset_props
 
 class DatasetStartResult:
-    def __init__(self, run_id, pdl_dataset_queue_list: List[DatasetQueue], source_sink_rel_count: int,
-                 source_id_list: List[str], sink_id_list: List[str], source_run_id_list: List[str],
+    def __init__(self, run_id, sink_id: str, dataset_queue_list: List[DatasetQueue], source_sink_rel_count: int,
+                 source_id_list: List[str], source_run_id_list: List[str],
                  orphan_sink: bool):
         """
 
         :param run_id: Run id of sink dataset
-        :param pdl_dataset_queue_list: List of available sources and their metadata and run data.
+        :param sink_id: sink_id start results apply to.
+        :param dataset_queue_list: List of available sources and their metadata and run data.
         :param source_sink_rel_count: Count of statically defined source/sink relationships
-        :param source_id_list: Actual set of sources that are ready/avilable to consume from
-        :param sink_id_list: List of sink_id_list. Can be more than one when searching across a zone/keys.
+        :param source_id_list: Actual set of sources that are ready/available to consume from
         :param orphan_sink: Is sink currently in possible orphan/run state
         """
         self.run_id = run_id
-        self.pdl_dataset_queue_list = pdl_dataset_queue_list
+        self.sink_id = sink_id
+        self.dataset_queue_list = dataset_queue_list
         self.source_sink_rel_count = source_sink_rel_count
         self.source_id_list = source_id_list  # list of unique sources that are ready to be consumed by this sink
-        self.sink_id_list = sink_id_list  # when multiple sinks returned search using keys
         self.source_run_id_list = source_run_id_list
         self.orphan_sink = orphan_sink
 
 
 class DatasetFetchSummary:
-    def __init__(self, pdl_dataset_queue_list: List[DatasetQueue], source_sink_rel_count: int,
-                 source_id_list: List[str], sink_id_list: List[str], source_run_id_list: List[str],
+    def __init__(self, dataset_queue_list: List[DatasetQueue], source_sink_rel_count: int,
+                 source_id_list: List[str], sink_id: str, source_run_id_list: List[str],
                  orphan_sink: bool):
         """
 
-        :param pdl_dataset_queue_list: List of available sources and their metadata and run data.
+        :param dataset_queue_list: List of available sources and their metadata and run data.
         :param source_sink_rel_count: Count of statically defined source/sink relationships
-        :param source_id_list: Actual set of sources that are ready/avilable to consume from
+        :param source_id_list: Actual set of sources that are ready/available to consume from
         :param sink_id_list: List of sink_id_list. Can be more than one when searching across a zone/keys.
         :param orphan_sink: Is sink currently in possible orphan/run state
         """
 
-        self.pdl_dataset_queue_list = pdl_dataset_queue_list
+        self.dataset_queue_list = dataset_queue_list
         self.source_sink_rel_count = source_sink_rel_count
         self.source_id_list = source_id_list  # list of unique sources that are ready to be consumed by this sink
-        self.sink_id_list = sink_id_list  # when multiple sinks returned search using keys
+        self.sink_id = sink_id
         self.source_run_idList = source_run_id_list
         self.orphan_sink = orphan_sink
 

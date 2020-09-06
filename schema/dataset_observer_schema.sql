@@ -5,18 +5,18 @@
 CREATE TABLE dataset_observer (
     /******* Immutable fields ******/
     dataset_observer_id CHAR(32) NOT NULL, -- GUID
+    model_zone_tag INT NOT NULL DEFAULT 1, -- arbitrary zones that a model might move through, starting at zone 1 (optional)
     model_namespace VARCHAR(64) NOT NULL DEFAULT 'ROOT', -- optional if namespaces are desired to organize models.
     model_name VARCHAR(64) NOT NULL, -- Required logical name of the model
     -- Details about dataset and model such as partitions keys of the dataset, if any.
     model_dataset_props VARCHAR(512) NOT NULL DEFAULT 'NA',  -- **new**  can be json array of name=value and contain any properties that define the data source.
-    -- 0 when mutable fields are superseded
-    model_zone_tag INT NOT NULL DEFAULT 1, -- arbitrary zones that a model might move through, starting at zone 1 (optional)
     /********************************/
 
     /******** Mutable fields ********/
-    -- disabled: means can't run (even if sources are ready).
-    -- retired: like disabled plus also it can't be used as new source/sink dataset/observer association.
-    -- ----- Cancelled -----Note, can't make observer retired if it is being used in existing sink/source.
+    -- disabled: means can't not run and process/consume new sources (even if sources are ready). Sources
+    -- that a ready will be returned but this observer will be marked with disabled. Will not be allowed to start.
+    -- retired: like disabled plus also it can't be used to make a new source/sink dataset/observer associations.
+    -- ----- Cancelled -----Note, can't make observer retired if it is being used in existing sink/source rel.
     observer_status INT NOT NULL DEFAULT 1,  -- 0 disabled, 1 enabled, 2 retired
     /* holds metadata about the dataset for use by observer process */
     observer_config VARCHAR(512),
@@ -26,17 +26,22 @@ CREATE TABLE dataset_observer (
     created_dt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     status_update_dt DATETIME DEFAULT CURRENT_TIMESTAMP,
 
-    PRIMARY KEY (model_namespace, model_name, model_dataset_props, model_zone_tag)
+    PRIMARY KEY (model_zone_tag, model_namespace, model_name, model_dataset_props)
 );
 CREATE UNIQUE INDEX dataset_observer_indx ON dataset_observer(dataset_observer_id);
 
 /*
-   Immutable relationship between source and sink. Can only have one "active" record per
-   sink/source. Active rel is defined by the terminated_dt being not infinity and suspended not null.
+   Immutable relationship between source and sink. Can only have one "active" record
+   (meaning it triggers an observer to see events) per
+   sink/source. Active rel is defined by the terminated_dt being NOT infinity and suspended not null.
    Rels can be terminated and new rels created over time without loss of history of rels.
 
-   Rel must be suspended and have no active events in the queue, before it can be terminated/ended.
+   A suspended rel means it will not be "active" or visible to a subscribed observer. Events
+   will be allowed to build/queue up but not made visible by subscriber/consumer/sink. Once
+   unsuspended it will flood observer/subscriber/sink with new subscribed events.
 
+   Rel must be suspended and have no unconsumed events in the queue, before it can be terminated/ended.
+   Or should we allow termination if not suspended and does not have unconsumed events??
 */
 CREATE TABLE dataset_source_to_sink_meta_rel (
     sink_dataset_id CHAR(32) NOT NULL,
