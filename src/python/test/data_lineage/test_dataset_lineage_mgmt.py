@@ -200,6 +200,33 @@ class TestDatasetLineage(unittest.TestCase):
         result2 = dataset_observer.start_dataset_observer_run_with_id(dataset2)
         dataset_observer.finish_dataset_observer_run(status="success", dataset_run_id=result2.run_id)
 
+    def test_7_0_fetch_ready_dataset_sources(self):
+        cls = TestDatasetLineage()
+
+        # More complex start case with association. Start the first/second dataset
+        dataset_observer = DatasetLineage(db_con=cls.db_con)
+
+        dataset1_1 = dataset_observer.declare_dataset_observer(model_name="test7_0--test", model_dataset_props="dim1")
+        dataset1_2 = dataset_observer.declare_dataset_observer(model_name="test7_0--test", model_dataset_props="dim2")
+        dataset2 = dataset_observer.declare_dataset_observer(model_name="another_test7_0--test")
+        dataset_observer.associate_dataset_source_to_sink(dataset1_1, dataset2)
+        dataset_observer.associate_dataset_source_to_sink(dataset1_2, dataset2)
+
+        result1_1 = dataset_observer.start_dataset_observer_run_with_id(dataset1_1)
+        dataset_observer.finish_dataset_observer_run(status="success", dataset_run_id=result1_1.run_id)
+        result1_2 = dataset_observer.start_dataset_observer_run_with_id(dataset1_2)
+        dataset_observer.finish_dataset_observer_run(status="success", dataset_run_id=result1_2.run_id)
+
+        datasetFetchSummary = dataset_observer.fetch_ready_dataset_sources_by_sink_id(sink_dataset_id=dataset2)
+        print(datasetFetchSummary)
+
+        result2 = dataset_observer.start_dataset_observer_run_with_id(dataset2,dependency_check="source_run_ids",
+                                                                      specific_sources=[result1_1.run_id])
+        dataset_observer.finish_dataset_observer_run(status="success", dataset_run_id=result2.run_id)
+        #result2 = dataset_observer.start_dataset_observer_run_with_id(dataset2, dependency_check="source_ids",
+        #                                                              specific_sources=[dataset1_2])
+        #dataset_observer.finish_dataset_observer_run(status="success", dataset_run_id=result2.run_id)
+
     def test_x_joke(self):
         from data_lineage.dataset_lineage_mgmt import a_simple_func
         import time

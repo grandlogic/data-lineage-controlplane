@@ -133,8 +133,8 @@ start_result_sz = dataflow_coord.start_dataflow_run_with_id(dataflow_proc_sz)
  
 # Info about the sources this SZ dataflow can consume
 print("SZ run_id created {}".format(start_result_sz.run_id))
-print("Number of RZ sources found {}".format(len(start_result_sz.pdl_dataflow_queue_list)))
-for ready_source_run in start_result_sz.pdl_dataflow_queue_list:
+print("Number of RZ sources found {}".format(len(start_result_sz.dataflow_queue_list)))
+for ready_source_run in start_result_sz.dataflow_queue_list:
     print("Found a RZ source dataflow ready to be consumed by this SZ dataflow")
     print("target dataflow id: %s" % ready_source_run.target_dataflow_id)
     print("source zone: {}".format(ready_source_run.zone))

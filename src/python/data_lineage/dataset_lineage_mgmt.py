@@ -385,7 +385,7 @@ class DatasetLineage:
                                  provided ids are matched (must be subset of associated sources or source run ids).
                                   If no matches found throws datasetDependencyException.
 
-                                 Throws datasetDependencyException if can't start run given this
+                                 Throws DatasetDependencyException if can't start run given this
                                  dependency check rule.
         :param breadcrumb: Customizable field at start of run that contain runtime breadcrumb trail info/metadata or metadata
         for retry scenarios.
@@ -393,11 +393,10 @@ class DatasetLineage:
         :param ext_job_run_output_log_link:
         :param ext_etl_proc_key:
         :param ext_etl_proc_output_log_link:
-        :raise: datasetAlreadyActiveException if dataset_observer_id is already active.
-        :raise: datasetNotFoundException if dataset_observer_id not found.
-        :raise: datasetDependencyException if dependencies missing or not satisfied.
-        :return: PdldatasetStartResult containing run_id and any available list of sources run metadata
-        (PdldatasetQueue).
+        :raise: AlreadyActiveException if dataset_observer_id is already active or orphaned.
+        :raise: DatasetNotFoundException if dataset_observer_id not found.
+        :raise: DependencyException if dependencies missing or not satisfied.
+        :return: DatasetStartResult containing run_id and any available list of sources run metadata (DatasetQueue).
         """
 
         conn = None
@@ -825,9 +824,9 @@ class DatasetLineage:
                 self.__close_db_con(conn)
 
     def fetch_ready_dataset_sources_by_sink_id(self,
-                                                 sink_dataset_id: str,
-                                                 dependency_check: str = 'any'
-                                                 ) -> (List[DatasetQueue], DatasetFetchSummary):
+                                                 sink_dataset_id: str
+                                                 #dependency_check: str = 'any'
+                                                 ) -> DatasetFetchSummary:
         """
         Detect if any sources are ready for consumption for a sink.
 
@@ -835,7 +834,7 @@ class DatasetLineage:
         :param dependency_check: {'all', 'any'} Fetch dataset sources ready to run only when 'any' or 'all' of the
                                  dependency sources are present. Default is 'any'. If 'all" and number of unique sources
                                  ready are less than the number of dependencies a sink has then empty list is returned.
-        :return: Empty list if no matching sources found and/or dependency_check not satisfied.
+        :return: DatasetFetchSummary object returned
         """
         conn = None
 
@@ -843,7 +842,7 @@ class DatasetLineage:
             conn = self.__get_db_con()
             queue_list, unique_source_id_list, static_source_rel_count, sink_id, source_run_id_list, \
             orphan_sink, dataset_rel_id_list, sink_observer_config =\
-                self.__internal_sources_ready_in_queue(conn, sink_dataset_id, dependency_check=dependency_check)
+                self.__internal_sources_ready_in_queue(conn, sink_dataset_id)
 
             fetch_result_summary = DatasetFetchSummary(queue_list, static_source_rel_count, unique_source_id_list,
                                                        sink_id, source_run_id_list, orphan_sink)
@@ -852,8 +851,7 @@ class DatasetLineage:
                   "unique_sink_id_list: %s \n orphan sink: %s" %
                   (len(queue_list), unique_source_id_list, static_source_rel_count, sink_id, orphan_sink))
 
-            # return both here for backward compatibility - summary is superset
-            return queue_list, fetch_result_summary
+            return fetch_result_summary
         finally:
             if conn is not None:
                 self.__close_db_con(conn)
@@ -863,19 +861,19 @@ class DatasetLineage:
                                                  model_namespace: str = 'ROOT',
                                                  model_dataset_props: str = 'NA',
                                                  model_zone_tag: int = 1,
-                                                 dependency_check: str = 'any'
-                                                 ) -> (List[DatasetQueue], DatasetFetchSummary):
+                                                 # dependency_check: str = 'any'
+                                                 ) -> DatasetFetchSummary:
         """
         Detect if any sources are ready for consumption for a sink.
 
-        :param zone: Zone may be provided alone or with additional predicates below to narrow datasets of interest.
-        :param model_name Optional. Zone is required.
-        :param model_key Optional. model_name is required.
-        :param model_sec_key Optional. model_key is required.
+        :param model_zone_tag: Zone may be provided alone or with additional predicates below to narrow datasets of interest.
+        :param model_name Optional
+        :param model_dataset_props Optional
+        :param model_namespace Optional
         :param dependency_check: {'all', 'any'} Fetch dataset sources ready to run only when 'any' or 'all' of the
                                  dependency sources are present. Default is 'any'. If 'all" and number of unique sources
                                  ready are less than the number of dependencies a sink has then empty list is returned.
-        :return: Empty list if no matching sources found and/or dependency_check not satisfied.
+        :return: DatasetFetchSummary object returned
         """
 
         conn = None
@@ -888,14 +886,14 @@ class DatasetLineage:
                                                        model_name=model_name,
                                                        model_namespace=model_namespace,
                                                        model_zone_tag=model_zone_tag,
-                                                       model_dataset_props=model_dataset_props,
-                                                       dependency_check=dependency_check)
+                                                       model_dataset_props=model_dataset_props
+                                                       #dependency_check=dependency_check
+                                                       )
 
             fetch_result_summary = DatasetFetchSummary(dataset_queue_list, source_sink_rel_count,
                                                        source_id_list, sink_id_list, source_run_id_list, orphan_sink)
 
-            # return both here for backward compatibility - summary is superset
-            return dataset_queue_list, fetch_result_summary
+            return fetch_result_summary
         finally:
             if conn is not None:
                 self.__close_db_con(conn)
@@ -1180,7 +1178,7 @@ class DatasetLineage:
         for idx, source_id in enumerate(specific_source_id_list):
             if idx == 0:
                 if dependency_check == 'source_ids':
-                    stmt_query += " AND qu.source_dataset_id IN ("
+                    stmt_query += " AND mrel.source_dataset_id IN ("
                 else:
                     stmt_query += " AND qu.source_run_id IN ("
 
@@ -1307,8 +1305,11 @@ class DatasetLineage:
 
         if (dependency_check == 'source_ids' or dependency_check == 'source_run_ids') and\
                 (specific_sources is None or len(specific_sources) == 0):
-            raise ConfigValidationException("Error: You did not provide any specific_sources "
+            raise ConfigValidationException("Error: You did not provide any specific_sources where "
                                                     "specific_sources: %s" % (specific_sources))
+        if (dependency_check not in ['source_ids','source_run_ids', 'ignore', 'any','all']):
+            raise ConfigValidationException("Error: dependency_check argument not valid: "
+                                                    "%s" % (dependency_check))
 
         run_id = get_new_guid().hex
         start_dt = datetime.now()
@@ -1332,19 +1333,25 @@ class DatasetLineage:
             # 4) Insert dataset run record (ready/start)
             #       -Some defensive code to prevent duplicates running for dataset ID
 
-            # Dont worry, dependency_check ignore get handled like 'any' during this call
+            # Dont worry, dependency_check ignore gets handled like 'any' during this call
             queue_list, unique_source_id_list, static_source_rel_count, sink_id, source_run_id_list, \
             orphan_sink, dataset_rel_id_list, sink_observer_config = \
                 self.__internal_sources_ready_in_queue(conn, dataset_observer_id, dependency_check=dependency_check,
                                                        specific_sources=specific_sources)
 
-            print("queue_list: %s \n unique_source_id_list: %s \n static_source_rel_count: %d \n "
+            logger.info("queue_list: %s \n unique_source_id_list: %s \n static_source_rel_count: %d \n "
                   "unique_sink_id_list: %s \n orphan sink: %s" %
                   (len(queue_list), unique_source_id_list, static_source_rel_count, sink_id, orphan_sink))
 
+            if orphan_sink == True:
+                logger.warning("queue_list: %s \n unique_source_id_list: %s \n static_source_rel_count: %d \n "
+                            "unique_sink_id_list: %s \n orphan sink: %s" %
+                            (len(queue_list), unique_source_id_list, static_source_rel_count, sink_id, orphan_sink))
+                raise AlreadyActiveException("Can't run dataset, there is one already active/orphaned")
+
             dataset_start_result = DatasetStartResult(run_id, sink_id, queue_list, static_source_rel_count,
                                                           unique_source_id_list,
-                                                          source_run_id_list, orphan_sink)
+                                                          source_run_id_list)
 
             if (dependency_check == 'source_ids' or dependency_check == 'source_run_ids') and \
                     len(unique_source_id_list) == 0:
@@ -1488,7 +1495,7 @@ class DatasetLineage:
             if query_cursor.rowcount > 1:
                 query_cursor.close()
                 conn.rollback()
-                raise AlreadyActiveException("Can't run dataset, there is one already active/orphaned {}".format(rows))
+                raise AlreadyActiveException("Defensive check: Can't run dataset, there is one already active/orphaned {}".format(rows))
 
             query_cursor.close()
             conn.commit()

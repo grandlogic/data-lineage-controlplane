@@ -87,8 +87,7 @@ class DatasetQueue:
 
 class DatasetStartResult:
     def __init__(self, run_id, sink_id: str, dataset_queue_list: List[DatasetQueue], source_sink_rel_count: int,
-                 source_id_list: List[str], source_run_id_list: List[str],
-                 orphan_sink: bool):
+                 source_id_list: List[str], source_run_id_list: List[str]):
         """
 
         :param run_id: Run id of sink dataset
@@ -96,7 +95,7 @@ class DatasetStartResult:
         :param dataset_queue_list: List of available sources and their metadata and run data.
         :param source_sink_rel_count: Count of statically defined source/sink relationships
         :param source_id_list: Actual set of sources that are ready/available to consume from
-        :param orphan_sink: Is sink currently in possible orphan/run state
+        ##:param orphan_sink: Is sink currently in possible orphan/run state
         """
         self.run_id = run_id
         self.sink_id = sink_id
@@ -104,7 +103,7 @@ class DatasetStartResult:
         self.source_sink_rel_count = source_sink_rel_count
         self.source_id_list = source_id_list  # list of unique sources that are ready to be consumed by this sink
         self.source_run_id_list = source_run_id_list
-        self.orphan_sink = orphan_sink
+        ##self.orphan_sink = orphan_sink
 
 
 class DatasetFetchSummary:
